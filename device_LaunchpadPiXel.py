@@ -106,9 +106,10 @@ def OnMidiIn(event):
             transport.stop()
             PaintCell(CAPTURE_MIDI, COLOR_IDLE)
             
-        else:            
-            FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
+        else:
             transport.start()
+            FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
+           
 
 def OnIdle():
 
@@ -137,7 +138,7 @@ def OnIdle():
                     PaintCell(cell, COLOR_GREEN)
                 
                 case 2:   # Playing
-                    FlashCell(cell, COLOR_RED, COLOR_BLACK)
+                    FlashCell(cell, COLOR_RED, COLOR_DARKRED)
                     
                 case 3:   # Scheduled, not playing
                     PulseCell(cell, COLOR_RED)
