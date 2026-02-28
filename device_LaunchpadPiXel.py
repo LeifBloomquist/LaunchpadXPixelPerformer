@@ -9,7 +9,6 @@ import playlist
 import transport
 import midi
 
-
 MSG_HEADER = [0xF0, 0x00, 0x20, 0x29, 0x02,0x0C]
 INIT_MSG   = [0x0E, 0x01, 0xF7]
 DEINIT_MSG = [0x0E, 0x00, 0xF7]
@@ -99,29 +98,31 @@ def OnMidiIn(event):
             block = row.index(event.data1)
             playlist.triggerLiveClip(i+1, block, midi.TLC_MuteOthers | midi.TLC_Fill) 
 
-    # Control playback with Capture MIDI.  Mimic the Akai Fire Colors
+    # Control playback with Capture MIDI.  (Colors set in main paint routine below)
     
-    if event.data1 == TOP_BUTTONS[7]:
+    if event.data1 == CAPTURE_MIDI:
         if transport.isPlaying():
-            transport.stop()
-            PaintCell(CAPTURE_MIDI, COLOR_IDLE)
+            transport.stop()            
             
         else:
-            transport.start()
-            FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
+            transport.start()            
            
 
 def OnIdle():
 
-    # Indicate status through the logo
+    # Indicate status through the logo and Capture MIDI button
+    # Mimic the Akai Fire Colors, mostly
     
     if playlist.getPerformanceModeState() == 0:   # Not even in Performance Mode
         PulseCell(NOVATION_LOGO, COLOR_IDLE)
+        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
         return
     elif transport.isPlaying() == 0:              # In Performance Mode, but not playing 
         PulseCell(NOVATION_LOGO, COLOR_IDLE)
+        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
     else:                                         # Performing!
         FlashCell(NOVATION_LOGO, COLOR_RED, COLOR_BLACK)
+        FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
     
     # Paint the clip grid
     
@@ -150,12 +151,9 @@ def OnIdle():
     
     for i, cell in enumerate(RIGHT_ARROWS):
         
-        if transport.isPlaying() == 0:     # Not playing 
-            PaintCell(cell, COLOR_DARKRED)
-            continue
+        track_status = playlist.getLiveStatus(i+1, midi.LB_Status_Simple)   # Tracks indexed from 1        
         
-        track_status = playlist.getLiveStatus(i+1, midi.LB_Status_Simple)   # Tracks indexed from 1
-        
+        # Playing
         match track_status:
             case 0:   # Empty
                 PaintCell(cell, COLOR_BLACK)
