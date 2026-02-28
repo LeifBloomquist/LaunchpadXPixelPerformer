@@ -135,7 +135,7 @@ def OnIdle():
                     PaintCell(cell, COLOR_BLACK)
                     
                 case 1:   # Filled
-                    PaintCell(cell, COLOR_GREEN)
+                    PaintCell(cell, COLOR_DARKRED)
                 
                 case 2:   # Playing
                     FlashCell(cell, COLOR_RED, COLOR_DARKRED)
