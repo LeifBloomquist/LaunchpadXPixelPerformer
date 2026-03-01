@@ -77,7 +77,7 @@ def PaintTopRow():
     PaintCell(SESSION,        CurrentTheme().session_default) # Session
     PaintCell(TOP_BUTTONS[5], CurrentTheme().OFF)             # Note
     PaintCell(CUSTOM,         CurrentTheme().logo_color)      # Custom
-    PaintCell(CAPTURE_MIDI,   CurrentTheme().OFF)             # Capture MIDI
+    PaintCell(CAPTURE_MIDI,   CurrentTheme().idle_color)      # Capture MIDI
     
     # Paint Logo
     PaintCell(NOVATION_LOGO, CurrentTheme().logo_color)
@@ -86,6 +86,9 @@ def PaintTopRow():
 def PaintAllButtons():    
     # Paint the clip grid    
     for i, row in enumerate(CLIP_GRID):
+        
+        loop_mode = playlist.getLiveLoopMode(i+1)   # Tracks indexed from 1
+        
         for j, cell in enumerate(row):
             
             block_status = playlist.getLiveBlockStatus(i+1, j, midi.LB_Status_Simple)   # Tracks indexed from 1
@@ -94,13 +97,16 @@ def PaintAllButtons():
                 case 0:   # Empty
                     PaintCell(cell, CurrentTheme().OFF)
                     
-                case 1:   # Filled
-                    PaintCell(cell, CurrentTheme().filled_color)
+                case 1:   # Filled                    
+                    if loop_mode == 1:  # LiveLoop_OneShot
+                        PaintCell(cell, CurrentTheme().oneshot_color)
+                    else:
+                        PaintCell(cell, CurrentTheme().filled_color)
                 
                 case 2:   # Playing
                     FlashCell(cell, CurrentTheme().playing_color, CurrentTheme().filled_color)
                     
-                case 3:   # Scheduled, not playing
+                case 3:   # Cued, not playing
                     PulseCell(cell, CurrentTheme().cued_color)
                     
                 case _:   # Unknown??
@@ -109,20 +115,24 @@ def PaintAllButtons():
     # Paint the side arrows    
     for i, cell in enumerate(RIGHT_ARROWS):
         
-        track_status = playlist.getLiveStatus(i+1, midi.LB_Status_Simple)   # Tracks indexed from 1        
+        track_status = playlist.getLiveStatus(i+1, midi.LB_Status_Simple)   # Tracks indexed from 1
+        loop_mode = playlist.getLiveLoopMode(i+1)   # Tracks indexed from 1
         
         # Playing
         match track_status:
             case 0:   # Empty
                 PaintCell(cell, CurrentTheme().OFF)
                 
-            case 2:   # None Playing  (swapped with 1?)
-                PaintCell(cell, CurrentTheme().filled_color)
+            case 2:   # None Playing (swapped with 1?)
+                if loop_mode == 1:  # LiveLoop_OneShot                 
+                    PaintCell(cell, CurrentTheme().oneshot_color)
+                else:
+                    PaintCell(cell, CurrentTheme().filled_color)
             
             case 1:   # Any Playing  (swapped with 2?)
                 FlashCell(cell, CurrentTheme().playing_color, CurrentTheme().filled_color)
                 
-            case 3:   # None scheduled, not playing - !!!! For some reason this never seems to be true?
+            case 3:   # None cued, not playing - !!!! For some reason this never seems to be true?
                 PulseCell(cell, CurrentTheme().filled_color)
                 
             case _:   # Unknown??
@@ -163,6 +173,7 @@ def OnMidiIn(event):
         
         # Stop the clips on this track
         playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)
+        PaintAllButtons()
         return
         
     # Handle clip grid    
