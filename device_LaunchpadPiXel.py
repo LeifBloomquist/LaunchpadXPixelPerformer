@@ -39,7 +39,8 @@ COLOR_GREEN    = 0x15
 COLOR_RED      = 0x48
 COLOR_DARKRED  = 0x79
 COLOR_YELLOW   = 0x0D
-COLOR_IDLE     = 0x7E  # Dullish orange
+COLOR_ORANGE   = 0x7E  
+COLOR_IDLE     = 0x60  # Dullish orange
 COLOR_ERROR    = 0x35  # Bright Purple
 
 COLOR_SESSION_DEFAULT = COLOR_WHITE
@@ -61,7 +62,7 @@ def OnInit():
     PaintCell(SESSION,        COLOR_SESSION_DEFAULT) # Session
     PaintCell(TOP_BUTTONS[5], COLOR_BLACK)           # Note
     PaintCell(TOP_BUTTONS[6], COLOR_BLACK)           # Custom
-    PaintCell(CAPTURE_MIDI,   COLOR_IDLE)            # Capture MIDI
+    PaintCell(CAPTURE_MIDI,   COLOR_BLACK)           # Capture MIDI
 
 
 def OnDeInit():
@@ -85,71 +86,7 @@ def ClearAllClips():
     for track, row in enumerate(CLIP_GRID):                 # For all tracks
         playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)  # Stop the clips on this track
 
-
-def OnMidiIn(event):
-    global session_pressed
-    global session_pressed_time
-    
-    event.handled=True
-    
-    # Filter out aftertouch    
-    if event.status == midi.MIDI_KEYAFTERTOUCH:
-        return
-        
-    # Filter out releases    
-    if event.data2 == 0:        
-        # Handle release of Session
-        if event.data1 == SESSION:
-            session_pressed = False
-            PaintCell(SESSION, COLOR_SESSION_DEFAULT)
-        return
-        
-    # Handle press of Session
-    if event.data1 == SESSION:
-        session_pressed = True
-        session_pressed_time = time.time()
-        PaintCell(SESSION, COLOR_DARKRED)
-    
-    # Handle side arrow buttons    
-    if event.data1 in RIGHT_ARROWS:
-        track = RIGHT_ARROWS.index(event.data1)
-        
-        # Stop the clips on this track
-        playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)
-        
-    # Handle clip grid    
-    for i, row in enumerate(CLIP_GRID):
-        if event.data1 in row:
-            block = row.index(event.data1)
-            playlist.triggerLiveClip(i+1, block, midi.TLC_MuteOthers | midi.TLC_Fill) 
-
-    # Control playback with Capture MIDI.  (Colors set in main paint routine in OnIdle below)    
-    if event.data1 == CAPTURE_MIDI:
-        if transport.isPlaying():
-            transport.stop()
-            
-        else:
-            transport.start()
-
-
-def OnIdle():
-    global session_pressed
-    global session_pressed_time
-
-    # Indicate status through the logo and Capture MIDI button
-    # Mimic the Akai Fire Colors, mostly
-    
-    if playlist.getPerformanceModeState() == 0:   # Not even in Performance Mode
-        PulseCell(NOVATION_LOGO, COLOR_IDLE)
-        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
-        return
-    elif transport.isPlaying() == 0:              # In Performance Mode, but not playing 
-        PulseCell(NOVATION_LOGO, COLOR_IDLE)
-        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
-    else:                                         # Performing!
-        FlashCell(NOVATION_LOGO, COLOR_RED, COLOR_BLACK)
-        FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
-    
+def PaintAllClips():
     # Paint the clip grid    
     for i, row in enumerate(CLIP_GRID):
         for j, cell in enumerate(row):
@@ -193,6 +130,75 @@ def OnIdle():
                 
             case _:   # Unknown??
                 PaintCell(cell, COLOR_ERROR)
+
+
+def OnMidiIn(event):
+    global session_pressed
+    global session_pressed_time
+    
+    event.handled=True
+    
+    if playlist.getPerformanceModeState() == 0:   # Not in Performance Mode
+        return
+    
+    # Filter out aftertouch    
+    if event.status == midi.MIDI_KEYAFTERTOUCH:
+        return
+        
+    # Filter out releases    
+    if event.data2 == 0:        
+        # Handle release of Session
+        if event.data1 == SESSION:
+            session_pressed = False
+            PaintCell(SESSION, COLOR_SESSION_DEFAULT)
+        return
+        
+    # Handle press of Session
+    if event.data1 == SESSION:
+        session_pressed = True
+        session_pressed_time = time.time()
+        PaintCell(SESSION, COLOR_DARKRED)
+        return
+    
+    # Handle side arrow buttons    
+    if event.data1 in RIGHT_ARROWS:
+        track = RIGHT_ARROWS.index(event.data1)
+        
+        # Stop the clips on this track
+        playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)
+        return
+        
+    # Handle clip grid    
+    for i, row in enumerate(CLIP_GRID):
+        if event.data1 in row:
+            block = row.index(event.data1)
+            playlist.triggerLiveClip(i+1, block, midi.TLC_MuteOthers | midi.TLC_Fill)
+
+    # Control playback with Capture MIDI.
+    if event.data1 == CAPTURE_MIDI:
+        if transport.isPlaying():
+            transport.stop()
+            PaintCell(CAPTURE_MIDI, COLOR_IDLE)
+            PaintCell(NOVATION_LOGO, COLOR_DARKRED)
+        else:
+            transport.start()
+
+def OnRefresh(flags):
+    
+    if playlist.getPerformanceModeState() == 0:   # Not in Performance Mode
+        PulseCell(CAPTURE_MIDI, COLOR_IDLE)        
+        PulseCell(NOVATION_LOGO, COLOR_IDLE)
+        return
+       
+    if transport.isPlaying() == 0:                # In Performance Mode, but not Playing 
+        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
+        PaintCell(NOVATION_LOGO, COLOR_RED)
+        return
+    
+
+def OnIdle():
+    global session_pressed
+    global session_pressed_time    
                 
     # If Session held down, clear all clips    
     if (session_pressed):
@@ -202,3 +208,28 @@ def OnIdle():
             ClearAllClips()
             PaintCell(SESSION, COLOR_RED)
             session_pressed = False
+
+
+# Show status, playback and beat through Capture MIDI and Novation Logo
+# Mimic the Akai Fire Colors, mostly
+def OnUpdateBeatIndicator(value):
+    
+    #Indicate the beat
+    match value:
+        case 0:   # Off
+            PaintCell(CAPTURE_MIDI, COLOR_BLACK)
+            PaintCell(NOVATION_LOGO, COLOR_BLACK)
+            
+        case 1:   # Bar
+            PaintCell(CAPTURE_MIDI, COLOR_ORANGE)
+            PaintCell(NOVATION_LOGO, COLOR_RED)
+        
+        case 2:   # Beat
+            PaintCell(CAPTURE_MIDI, COLOR_GREEN)
+            PaintCell(NOVATION_LOGO, COLOR_RED)
+
+        case _:   # Unknown??
+            PaintCell(CAPTURE_MIDI, COLOR_ERROR)
+            PaintCell(NOVATION_LOGO, COLOR_ERROR)
+            
+    PaintAllClips()
