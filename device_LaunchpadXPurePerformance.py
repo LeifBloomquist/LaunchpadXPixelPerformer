@@ -1,6 +1,6 @@
-# name=Launchpad X PiXel Performer
+# name=Launchpad X Pure Performance
 """
-# Launchpad X PiXel Performer
+# Launchpad X Pure Performance
 
 An FL Studio script for Focused Performance Mode on the Launchpad X
 """
@@ -107,7 +107,7 @@ def PaintAllClips():
                     PulseCell(cell, COLOR_RED)
                     
                 case _:   # Unknown??
-                    PaintCell(cell, COLOR_ERROR)            
+                     PaintCell(cell, COLOR_ERROR)            
     
     # Paint the side arrows    
     for i, cell in enumerate(RIGHT_ARROWS):
