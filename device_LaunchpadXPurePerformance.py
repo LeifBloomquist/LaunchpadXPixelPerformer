@@ -9,6 +9,7 @@ import playlist
 import transport
 import midi
 import time
+from themes import CurrentTheme, NextTheme
 
 MSG_HEADER = [0xF0, 0x00, 0x20, 0x29, 0x02,0x0C]
 INIT_MSG   = [0x0E, 0x01, 0xF7]
@@ -17,7 +18,9 @@ DEINIT_MSG = [0x0E, 0x00, 0xF7]
 NOVATION_LOGO = 0x63
 RIGHT_ARROWS  = [0x59, 0x4F, 0x45, 0x3B, 0x31, 0x27, 0x1D, 0x13]
 TOP_BUTTONS   = [0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61, 0x62]
+
 SESSION       = TOP_BUTTONS[4]
+CUSTOM        = TOP_BUTTONS[6]
 CAPTURE_MIDI  = TOP_BUTTONS[7]
 
 CLIP_GRID = [
@@ -31,20 +34,6 @@ CLIP_GRID = [
     list(range(0x0B, 0x13)),
 ]
 
-COLOR_BLACK    = 0x00
-COLOR_BLUE     = 0x29
-COLOR_DARKBLUE = 0x2D
-COLOR_WHITE    = 0x03
-COLOR_GREEN    = 0x15
-COLOR_RED      = 0x48
-COLOR_DARKRED  = 0x79
-COLOR_YELLOW   = 0x0D
-COLOR_ORANGE   = 0x7E  
-COLOR_IDLE     = 0x60  # Dullish orange
-COLOR_ERROR    = 0x35  # Bright Purple
-
-COLOR_SESSION_DEFAULT = COLOR_WHITE
-
 # Timer for clearing all clips
 session_pressed = False
 session_pressed_time = 0
@@ -53,16 +42,8 @@ HOLD_THRESHOLD = 1.5  # Seconds
 
 def OnInit():
     device.midiOutSysex(bytes(MSG_HEADER + INIT_MSG))
-    
-    # Paint the top row of buttons     
-    PaintCell(TOP_BUTTONS[0], COLOR_DARKBLUE)        # Arrows
-    PaintCell(TOP_BUTTONS[1], COLOR_DARKBLUE)
-    PaintCell(TOP_BUTTONS[2], COLOR_DARKBLUE)
-    PaintCell(TOP_BUTTONS[3], COLOR_DARKBLUE)
-    PaintCell(SESSION,        COLOR_SESSION_DEFAULT) # Session
-    PaintCell(TOP_BUTTONS[5], COLOR_BLACK)           # Note
-    PaintCell(TOP_BUTTONS[6], COLOR_BLACK)           # Custom
-    PaintCell(CAPTURE_MIDI,   COLOR_BLACK)           # Capture MIDI
+    PaintTopRow()
+    PaintAllButtons()
 
 
 def OnDeInit():
@@ -86,7 +67,23 @@ def ClearAllClips():
     for track, row in enumerate(CLIP_GRID):                 # For all tracks
         playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)  # Stop the clips on this track
 
-def PaintAllClips():
+
+def PaintTopRow():
+    # Paint the top row of buttons     
+    PaintCell(TOP_BUTTONS[0], CurrentTheme().arrow_colors)    # Arrows
+    PaintCell(TOP_BUTTONS[1], CurrentTheme().arrow_colors)
+    PaintCell(TOP_BUTTONS[2], CurrentTheme().arrow_colors)
+    PaintCell(TOP_BUTTONS[3], CurrentTheme().arrow_colors)
+    PaintCell(SESSION,        CurrentTheme().session_default) # Session
+    PaintCell(TOP_BUTTONS[5], CurrentTheme().OFF)             # Note
+    PaintCell(CUSTOM,         CurrentTheme().logo_color)      # Custom
+    PaintCell(CAPTURE_MIDI,   CurrentTheme().OFF)             # Capture MIDI
+    
+    # Paint Logo
+    PaintCell(NOVATION_LOGO, CurrentTheme().logo_color)
+    
+    
+def PaintAllButtons():    
     # Paint the clip grid    
     for i, row in enumerate(CLIP_GRID):
         for j, cell in enumerate(row):
@@ -95,19 +92,19 @@ def PaintAllClips():
             
             match block_status:
                 case 0:   # Empty
-                    PaintCell(cell, COLOR_BLACK)
+                    PaintCell(cell, CurrentTheme().OFF)
                     
                 case 1:   # Filled
-                    PaintCell(cell, COLOR_DARKRED)
+                    PaintCell(cell, CurrentTheme().filled_color)
                 
                 case 2:   # Playing
-                    FlashCell(cell, COLOR_RED, COLOR_DARKRED)
+                    FlashCell(cell, CurrentTheme().playing_color, CurrentTheme().filled_color)
                     
                 case 3:   # Scheduled, not playing
-                    PulseCell(cell, COLOR_RED)
+                    PulseCell(cell, CurrentTheme().cued_color)
                     
                 case _:   # Unknown??
-                     PaintCell(cell, COLOR_ERROR)            
+                     PaintCell(cell, CurrentTheme().COLOR_ERROR)            
     
     # Paint the side arrows    
     for i, cell in enumerate(RIGHT_ARROWS):
@@ -117,19 +114,19 @@ def PaintAllClips():
         # Playing
         match track_status:
             case 0:   # Empty
-                PaintCell(cell, COLOR_BLACK)
+                PaintCell(cell, CurrentTheme().OFF)
                 
             case 2:   # None Playing  (swapped with 1?)
-                PaintCell(cell, COLOR_DARKRED)
+                PaintCell(cell, CurrentTheme().filled_color)
             
             case 1:   # Any Playing  (swapped with 2?)
-                FlashCell(cell, COLOR_RED, COLOR_DARKRED)
+                FlashCell(cell, CurrentTheme().playing_color, CurrentTheme().filled_color)
                 
             case 3:   # None scheduled, not playing - !!!! For some reason this never seems to be true?
-                PulseCell(cell, COLOR_DARKRED)
+                PulseCell(cell, CurrentTheme().filled_color)
                 
             case _:   # Unknown??
-                PaintCell(cell, COLOR_ERROR)
+                PaintCell(cell, CurrentTheme().COLOR_ERROR)
 
 
 def OnMidiIn(event):
@@ -150,14 +147,14 @@ def OnMidiIn(event):
         # Handle release of Session
         if event.data1 == SESSION:
             session_pressed = False
-            PaintCell(SESSION, COLOR_SESSION_DEFAULT)
+            PaintCell(SESSION, CurrentTheme().session_default)
         return
         
     # Handle press of Session
     if event.data1 == SESSION:
         session_pressed = True
         session_pressed_time = time.time()
-        PaintCell(SESSION, COLOR_DARKRED)
+        PaintCell(SESSION, CurrentTheme().session_pressed)
         return
     
     # Handle side arrow buttons    
@@ -174,26 +171,32 @@ def OnMidiIn(event):
             block = row.index(event.data1)
             playlist.triggerLiveClip(i+1, block, midi.TLC_MuteOthers | midi.TLC_Fill)
 
-    # Control playback with Capture MIDI.
+    # Control playback with Capture MIDI button
     if event.data1 == CAPTURE_MIDI:
         if transport.isPlaying():
             transport.stop()
-            PaintCell(CAPTURE_MIDI, COLOR_IDLE)
-            PaintCell(NOVATION_LOGO, COLOR_DARKRED)
+            PaintCell(CAPTURE_MIDI, CurrentTheme().idle_color)            
         else:
             transport.start()
-
-def OnRefresh(flags):
+            
+    # Switch Themes with Custom button
+    if event.data1 == CUSTOM:
+        NextTheme()
+        PaintTopRow()
     
+    # Refresh
+    PaintAllButtons()
+
+
+def OnRefresh(flags):    
     if playlist.getPerformanceModeState() == 0:   # Not in Performance Mode
-        PulseCell(CAPTURE_MIDI, COLOR_IDLE)        
-        PulseCell(NOVATION_LOGO, COLOR_IDLE)
+        PulseCell(CAPTURE_MIDI, CurrentTheme().idle_color)        
+        PulseCell(NOVATION_LOGO, CurrentTheme().idle_color)
         return
        
     if transport.isPlaying() == 0:                # In Performance Mode, but not Playing 
-        PaintCell(CAPTURE_MIDI, COLOR_IDLE)
-        PaintCell(NOVATION_LOGO, COLOR_RED)
-        return
+        PaintCell(CAPTURE_MIDI, CurrentTheme().idle_color)        
+        return     
     
 
 def OnIdle():
@@ -206,30 +209,29 @@ def OnIdle():
             
         if delta > HOLD_THRESHOLD:
             ClearAllClips()
-            PaintCell(SESSION, COLOR_RED)
+            PaintCell(SESSION, CurrentTheme().session_cleared)
             session_pressed = False
 
 
 # Show status, playback and beat through Capture MIDI and Novation Logo
 # Mimic the Akai Fire Colors, mostly
-def OnUpdateBeatIndicator(value):
-    
+def OnUpdateBeatIndicator(value):    
     #Indicate the beat
     match value:
         case 0:   # Off
-            PaintCell(CAPTURE_MIDI, COLOR_BLACK)
-            PaintCell(NOVATION_LOGO, COLOR_BLACK)
+            PaintCell(CAPTURE_MIDI, CurrentTheme().OFF)
+            PaintCell(NOVATION_LOGO, CurrentTheme().OFF)
             
         case 1:   # Bar
-            PaintCell(CAPTURE_MIDI, COLOR_ORANGE)
-            PaintCell(NOVATION_LOGO, COLOR_RED)
+            PaintCell(CAPTURE_MIDI, CurrentTheme().bar_color)
+            PaintCell(NOVATION_LOGO, CurrentTheme().logo_color)
         
         case 2:   # Beat
-            PaintCell(CAPTURE_MIDI, COLOR_GREEN)
-            PaintCell(NOVATION_LOGO, COLOR_RED)
+            PaintCell(CAPTURE_MIDI, CurrentTheme().beat_color)
+            PaintCell(NOVATION_LOGO, CurrentTheme().logo_color)
 
         case _:   # Unknown??
-            PaintCell(CAPTURE_MIDI, COLOR_ERROR)
-            PaintCell(NOVATION_LOGO, COLOR_ERROR)
+            PaintCell(CAPTURE_MIDI, CurrentTheme().COLOR_ERROR)
+            PaintCell(NOVATION_LOGO, CurrentTheme().COLOR_ERROR)
             
-    PaintAllClips()
+    PaintAllButtons()
