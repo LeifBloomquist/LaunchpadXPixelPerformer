@@ -77,7 +77,7 @@ def PaintTopRow():
     PaintCell(SESSION,        CurrentTheme().session_default) # Session
     PaintCell(TOP_BUTTONS[5], CurrentTheme().OFF)             # Note
     PaintCell(CUSTOM,         CurrentTheme().logo_color)      # Custom
-    PaintCell(CAPTURE_MIDI,   CurrentTheme().idle_color)      # Capture MIDI
+    PaintCell(CAPTURE_MIDI,   CurrentTheme().stopped_color)   # Capture MIDI
     
     # Paint Logo
     PaintCell(NOVATION_LOGO, CurrentTheme().logo_color)
@@ -186,7 +186,7 @@ def OnMidiIn(event):
     if event.data1 == CAPTURE_MIDI:
         if transport.isPlaying():
             transport.stop()
-            PaintCell(CAPTURE_MIDI, CurrentTheme().idle_color)            
+            PaintCell(CAPTURE_MIDI, CurrentTheme().stopped_color)            
         else:
             transport.start()
             

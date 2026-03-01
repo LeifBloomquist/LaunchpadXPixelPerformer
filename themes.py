@@ -17,6 +17,7 @@ class Theme:
         self.session_default = COLOR_WHITE
         self.session_pressed = COLOR_DARKRED
         self.session_cleared = COLOR_RED
+        self.stopped_color = COLOR_ORANGE
         self.bar_color = COLOR_YELLOW
         self.beat_color = COLOR_GREEN
         
