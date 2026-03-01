@@ -8,6 +8,7 @@ import device
 import playlist
 import transport
 import midi
+import time
 
 MSG_HEADER = [0xF0, 0x00, 0x20, 0x29, 0x02,0x0C]
 INIT_MSG   = [0x0E, 0x01, 0xF7]
@@ -16,6 +17,7 @@ DEINIT_MSG = [0x0E, 0x00, 0xF7]
 NOVATION_LOGO = 0x63
 RIGHT_ARROWS  = [0x59, 0x4F, 0x45, 0x3B, 0x31, 0x27, 0x1D, 0x13]
 TOP_BUTTONS   = [0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60, 0x61, 0x62]
+SESSION       = TOP_BUTTONS[4]
 CAPTURE_MIDI  = TOP_BUTTONS[7]
 
 CLIP_GRID = [
@@ -38,20 +40,28 @@ COLOR_RED      = 0x48
 COLOR_DARKRED  = 0x79
 COLOR_YELLOW   = 0x0D
 COLOR_IDLE     = 0x7E  # Dullish orange
+COLOR_ERROR    = 0x35  # Bright Purple
+
+COLOR_SESSION_DEFAULT = COLOR_WHITE
+
+# Timer for clearing all clips
+session_pressed = False
+session_pressed_time = 0
+HOLD_THRESHOLD = 1.5  # Seconds
 
 
 def OnInit():
     device.midiOutSysex(bytes(MSG_HEADER + INIT_MSG))
     
     # Paint the top row of buttons     
-    PaintCell(TOP_BUTTONS[0], COLOR_DARKBLUE)  # Arrows
+    PaintCell(TOP_BUTTONS[0], COLOR_DARKBLUE)        # Arrows
     PaintCell(TOP_BUTTONS[1], COLOR_DARKBLUE)
     PaintCell(TOP_BUTTONS[2], COLOR_DARKBLUE)
     PaintCell(TOP_BUTTONS[3], COLOR_DARKBLUE)
-    PaintCell(TOP_BUTTONS[4], COLOR_WHITE)     # Session
-    PaintCell(TOP_BUTTONS[5], COLOR_BLACK)     # Note
-    PaintCell(TOP_BUTTONS[6], COLOR_BLACK)     # Custom
-    PaintCell(CAPTURE_MIDI,   COLOR_BLACK)     # Capture MIDI
+    PaintCell(SESSION,        COLOR_SESSION_DEFAULT) # Session
+    PaintCell(TOP_BUTTONS[5], COLOR_BLACK)           # Note
+    PaintCell(TOP_BUTTONS[6], COLOR_BLACK)           # Custom
+    PaintCell(CAPTURE_MIDI,   COLOR_IDLE)            # Capture MIDI
 
 
 def OnDeInit():
@@ -71,7 +81,14 @@ def PulseCell(cell_id, color):
     device.midiOutMsg(midi.MIDI_NOTEON, 0x2, cell_id, color)
 
 
+def ClearAllClips():
+    for track, row in enumerate(CLIP_GRID):                 # For all tracks
+        playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)  # Stop the clips on this track
+
+
 def OnMidiIn(event):
+    global session_pressed
+    global session_pressed_time
     
     event.handled=True
     
@@ -80,35 +97,44 @@ def OnMidiIn(event):
         return
         
     # Filter out releases    
-    if event.data2 == 0:
+    if event.data2 == 0:        
+        # Handle release of Session
+        if event.data1 == SESSION:
+            session_pressed = False
+            PaintCell(SESSION, COLOR_SESSION_DEFAULT)
         return
+        
+    # Handle press of Session
+    if event.data1 == SESSION:
+        session_pressed = True
+        session_pressed_time = time.time()
+        PaintCell(SESSION, COLOR_DARKRED)
     
-    # Handle side arrow buttons
-    
+    # Handle side arrow buttons    
     if event.data1 in RIGHT_ARROWS:
         track = RIGHT_ARROWS.index(event.data1)
         
         # Stop the clips on this track
         playlist.triggerLiveClip(track+1,-1,midi.TLC_Fill)
         
-    # Handle clip grid
-    
+    # Handle clip grid    
     for i, row in enumerate(CLIP_GRID):
         if event.data1 in row:
             block = row.index(event.data1)
             playlist.triggerLiveClip(i+1, block, midi.TLC_MuteOthers | midi.TLC_Fill) 
 
-    # Control playback with Capture MIDI.  (Colors set in main paint routine below)
-    
+    # Control playback with Capture MIDI.  (Colors set in main paint routine in OnIdle below)    
     if event.data1 == CAPTURE_MIDI:
         if transport.isPlaying():
-            transport.stop()            
+            transport.stop()
             
         else:
-            transport.start()            
-           
+            transport.start()
+
 
 def OnIdle():
+    global session_pressed
+    global session_pressed_time
 
     # Indicate status through the logo and Capture MIDI button
     # Mimic the Akai Fire Colors, mostly
@@ -124,8 +150,7 @@ def OnIdle():
         FlashCell(NOVATION_LOGO, COLOR_RED, COLOR_BLACK)
         FlashCell(CAPTURE_MIDI, COLOR_GREEN, COLOR_BLACK);
     
-    # Paint the clip grid
-    
+    # Paint the clip grid    
     for i, row in enumerate(CLIP_GRID):
         for j, cell in enumerate(row):
             
@@ -145,10 +170,9 @@ def OnIdle():
                     PulseCell(cell, COLOR_RED)
                     
                 case _:   # Unknown??
-                    PaintCell(cell, COLOR_IDLE)            
+                    PaintCell(cell, COLOR_ERROR)            
     
-    # Paint the side arrows
-    
+    # Paint the side arrows    
     for i, cell in enumerate(RIGHT_ARROWS):
         
         track_status = playlist.getLiveStatus(i+1, midi.LB_Status_Simple)   # Tracks indexed from 1        
@@ -164,9 +188,17 @@ def OnIdle():
             case 1:   # Any Playing  (swapped with 2?)
                 FlashCell(cell, COLOR_RED, COLOR_DARKRED)
                 
-            case 3:   # None scheduled, not playing
-                PulseCell(cell, COLOR_DARKRED)                
+            case 3:   # None scheduled, not playing - !!!! For some reason this never seems to be true?
+                PulseCell(cell, COLOR_DARKRED)
                 
             case _:   # Unknown??
-                PaintCell(cell, COLOR_IDLE)
-
+                PaintCell(cell, COLOR_ERROR)
+                
+    # If Session held down, clear all clips    
+    if (session_pressed):
+        delta = time.time() - session_pressed_time
+            
+        if delta > HOLD_THRESHOLD:
+            ClearAllClips()
+            PaintCell(SESSION, COLOR_RED)
+            session_pressed = False
