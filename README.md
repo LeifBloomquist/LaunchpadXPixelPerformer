@@ -19,8 +19,9 @@ Note: The script is only active when the FL Project is in Performance Mode.
 * Use the **>** buttons on the right side to end playback on that particular row.
 * Press and hold the **Session** button for 1.5 seconds to "clear" the playback state of all cells.
 * Use the **Session** button for 1.5 seconds to "clear" the playback state of all cells.
+* Use the **Custom** button to change themes (see below) 
 * TODO: use the **Arrow Buttons** to move the Performance Grid.
-* TODO: use the **Custom** button to change themes (see below) 
+
 
 ## Status Indicators
 The **Novation Logo** will change color based on the script state:
@@ -34,7 +35,7 @@ The **Capture MIDI** button will change color based on the playback state:
 * Flashing Yellow/Green/Green/Green: Performance Mode Active (Mimics Akai FL Studio Fire Playback colors in time with the beat)
 
 ## Themes
-TBD
+By pressing the **Custom** button, the Launchpad X will cycle through various color schemes.  Themes can be easily added and modified though the `themes.py` script.
 
 
 ## Known Issues
