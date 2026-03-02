@@ -4,12 +4,13 @@ A minimalist FL Studio script for focused Performance Mode on the Launchpad X, w
 ## Installation
 1. Download the ZIP and extract it to the following folder:
 
-> ...\Documents\Image-Line\FL Studio\Settings\Hardware\
+`...\Documents\Image-Line\FL Studio\Settings\Hardware\LaunchpadXPurePerformance\`
 
-2. Under MIDI settings, set *both* LPX MIDI Devices to "Launchpad X Pure Performance", assign each a MIDI Port Number, and enable "Send master sync".
+2. Under MIDI settings, press "Update MIDI Scripts".
 
-![MIDI Settings](https://raw.githubusercontent.com/LeifBloomquist/LaunchpadXPurePerformance/refs/heads/main/Screenshots/MIDISettings.png)
+3. Under MIDI settings, set *both* LPX MIDI Devices to "Launchpad X Pure Performance", assign each a MIDI Port Number, and enable "Send master sync".
 
+<img src="https://raw.githubusercontent.com/LeifBloomquist/LaunchpadXPurePerformance/refs/heads/main/Screenshots/MIDISettings.png" width="400" >
 
 ## Usage
 Note: The script is only active when the FL Project is in Performance Mode.
@@ -18,7 +19,6 @@ Note: The script is only active when the FL Project is in Performance Mode.
 * Use the **8x8 grid** to trigger and cue clips.
 * Use the **>** buttons on the right side to end playback on that particular row.
 * Press and hold the **Session** button for 1.5 seconds to "clear" the playback state of all cells.
-* Use the **Session** button for 1.5 seconds to "clear" the playback state of all cells.
 * Use the **Custom** button to change themes (see below) 
 * Use the **Arrow Buttons** to move the Performance Grid.
 
