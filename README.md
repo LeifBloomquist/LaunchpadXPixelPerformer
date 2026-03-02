@@ -25,14 +25,14 @@ Note: The script is only active when the FL Project is in Performance Mode.
 
 ## Status Indicators
 The **Novation Logo** will change color based on the script state:
-* Pulsing Orange: Not in Performance Mode
-* Solid Red: In Performance Mode, but not playing
-* Flashing Red: Performance Mode Active (flashes in time with the beat)
+* Pulsing: Not in Performance Mode
+* Solid: In Performance Mode, but not playing
+* Flashing: Performance Mode Active (flashes in time with the beat)
 
 The **Capture MIDI** button will change color based on the playback state:
 * Pulsing Orange: Not in Performance Mode
 * Solid Orange: In Performance Mode, but not playing
-* Flashing Yellow/Green/Green/Green: Performance Mode Active (Mimics Akai FL Studio Fire Playback colors in time with the beat)
+* Flashing Yellow/Green/Green/Green: Performance Mode Active (Mimics Akai FL Studio Fire Playback colors, in time with the beat)
 
 
 ## Themes
